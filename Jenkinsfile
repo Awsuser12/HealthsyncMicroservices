@@ -3,8 +3,8 @@ pipeline {
 
     environment {
         // AWS Credentials (can be configured in Jenkins as credentials)
-        AWS_ACCESS_KEY_ID = credentials('AKIAVFIWI7H2KV4XOTUE') // AWS Access Key ID
-        AWS_SECRET_ACCESS_KEY = credentials('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') // AWS Secret Access Key
+        AWS_ACCESS_KEY_ID = 'AKIAVFIWI7H2KV4XOTUE' // AWS Access Key ID
+        AWS_SECRET_ACCESS_KEY = '2gSXo5eSpLIG2TyzEjuTwWVdEvUocVjceSrha53y' // AWS Secret Access Key
         AWS_REGION = 'us-east-1' // Specify your AWS region
         ECR_REPO_URI = '354918398452.dkr.ecr.us-east-1.amazonaws.com/healthsync' // Replace with your ECR URI
         EKS_CLUSTER_NAME = 'MyCluster' // Your EKS cluster name
