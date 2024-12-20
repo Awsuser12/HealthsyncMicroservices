@@ -6,11 +6,11 @@ app = Flask(__name__)
 
 # Redshift configuration
 REDSHIFT_CONFIG = {
-    "dbname": "your_database_name",
-    "user": "your_username",
-    "password": "your_password",
-    "host": "your_redshift_cluster_endpoint",
-    "port": "5439",
+    "dbname": "dev",  # Redshift username
+    "user": "awsuser",
+    "password": "Admin$100",  # Redshift password
+    "host": "redshift-cluster-1.cmst8p4oj0qe.us-east-1.redshift.amazonaws.com:5439/dev",  # Replace with actual cluster endpoint
+    "port": "5439",  # Default Redshift port
 }
 
 def connect_to_redshift():
@@ -44,32 +44,36 @@ def aggregate_data():
         if not connection:
             return jsonify({"error": "Failed to connect to Redshift"}), 500
 
-        cursor = connection.cursor()
+        with connection:
+            with connection.cursor() as cursor:
+                # Create table if not exists
+                cursor.execute("""
+                CREATE TABLE IF NOT EXISTS aggregated_metrics (
+                    doctor_id INT,
+                    appointments_count INT,
+                    common_condition VARCHAR(255),
+                    aggregated_date TIMESTAMP
+                );
+                """)
 
-        # Create table if not exists
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS aggregated_metrics (
-            doctor_id INT,
-            appointments_count INT,
-            common_condition VARCHAR(255),
-            aggregated_date TIMESTAMP
-        );
-        """)
-
-        # Insert aggregated data
-        cursor.execute("""
-        INSERT INTO aggregated_metrics (doctor_id, appointments_count, common_condition, aggregated_date)
-        VALUES (%s, %s, %s, %s);
-        """, (data["doctor_id"], data["appointments_count"], data["common_condition"], data["aggregated_date"]))
-
-        connection.commit()
-        cursor.close()
-        connection.close()
+                # Insert aggregated data
+                cursor.execute("""
+                INSERT INTO aggregated_metrics (doctor_id, appointments_count, common_condition, aggregated_date)
+                VALUES (%s, %s, %s, %s);
+                """, (data["doctor_id"], data["appointments_count"], data["common_condition"], data["aggregated_date"]))
 
         return jsonify({"message": "Aggregated data stored in Redshift"}), 200
+    except psycopg2.Error as db_error:
+        print(f"Database error during aggregation: {db_error}")
+        return jsonify({"error": "Database error occurred"}), 500
     except Exception as e:
-        print(f"Error during aggregation: {e}")
+        print(f"Unexpected error during aggregation: {e}")
         return jsonify({"error": str(e)}), 500
+    finally:
+        if 'connection' in locals() and connection:
+            connection.close()
 
 if __name__ == "__main__":
+    import logging
+    logging.basicConfig(level=logging.INFO)
     app.run(host='0.0.0.0', port=5003)
