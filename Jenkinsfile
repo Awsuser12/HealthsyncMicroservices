@@ -1,5 +1,5 @@
 import psycopg2
-from flask import Flask, jsonify
+from flask import Flask,jsonify
 from datetime import datetime
 
 app = Flask(__name__)
