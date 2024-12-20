@@ -1,79 +1,101 @@
-import psycopg2
-from flask import Flask,jsonify
-from datetime import datetime
+pipeline {
+    agent any
 
-app = Flask(__name__)
+    environment {
+        // AWS Credentials (can be configured in Jenkins as credentials)
+        AWS_ACCESS_KEY_ID = credentials('AKIAVFIWI7H2KV4XOTUE') // AWS Access Key ID
+        AWS_SECRET_ACCESS_KEY = credentials('2gSXo5eSpLIG2TyzEjuTwWVdEvUocVjceSrha53y') // AWS Secret Access Key
+        AWS_REGION = 'us-east-1' // Specify your AWS region
+        ECR_REPO_URI = '354918398452.dkr.ecr.us-east-1.amazonaws.com/healthsync' // Replace with your ECR URI
+        EKS_CLUSTER_NAME = 'MyCluster' // Your EKS cluster name
+    }
 
-# Redshift configuration
-REDSHIFT_CONFIG = {
-    "dbname": "dev",  # Redshift username
-    "user": "awsuser",
-    "password": "Admin$100",  # Redshift password
-    "host": "redshift-cluster-1.cmst8p4oj0qe.us-east-1.redshift.amazonaws.com:5439/dev",  # Replace with actual cluster endpoint
-    "port": "5439",  # Default Redshift port
-}
-
-def connect_to_redshift():
-    """Establish a connection to Redshift."""
-    try:
-        connection = psycopg2.connect(
-            dbname=REDSHIFT_CONFIG["dbname"],
-            user=REDSHIFT_CONFIG["user"],
-            password=REDSHIFT_CONFIG["password"],
-            host=REDSHIFT_CONFIG["host"],
-            port=REDSHIFT_CONFIG["port"]
-        )
-        return connection
-    except Exception as e:
-        print(f"Error connecting to Redshift: {e}")
-        return None
-
-@app.route('/aggregate', methods=['GET'])
-def aggregate_data():
-    """Aggregate data and store it in Redshift."""
-    try:
-        # Example metrics
-        data = {
-            "doctor_id": 123,
-            "appointments_count": 15,
-            "common_condition": "Hypertension",
-            "aggregated_date": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    stages {
+        stage('Clone Repository') {
+            steps {
+                checkout scm
+            }
         }
 
-        connection = connect_to_redshift()
-        if not connection:
-            return jsonify({"error": "Failed to connect to Redshift"}), 500
+        stage('Build Docker Images') {
+            steps {
+                script {
+                    // Build Docker images for all microservices
+                    sh """
+                        docker build -t ${ECR_REPO_URI}/patient_record_service:latest ./patient_record_service
+                        docker build -t ${ECR_REPO_URI}/doctor_service:latest ./doctor_service
+                        docker build -t ${ECR_REPO_URI}/appointment_service:latest ./appointment_service
+                        docker build -t ${ECR_REPO_URI}/notification_service:latest ./notification_service
+                    """
+                }
+            }
+        }
 
-        with connection:
-            with connection.cursor() as cursor:
-                # Create table if not exists
-                cursor.execute("""
-                CREATE TABLE IF NOT EXISTS aggregated_metrics (
-                    doctor_id INT,
-                    appointments_count INT,
-                    common_condition VARCHAR(255),
-                    aggregated_date TIMESTAMP
-                );
-                """)
+        stage('Login to ECR') {
+            steps {
+                script {
+                    // Login to AWS ECR
+                    sh """
+                        aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPO_URI}
+                    """
+                }
+            }
+        }
 
-                # Insert aggregated data
-                cursor.execute("""
-                INSERT INTO aggregated_metrics (doctor_id, appointments_count, common_condition, aggregated_date)
-                VALUES (%s, %s, %s, %s);
-                """, (data["doctor_id"], data["appointments_count"], data["common_condition"], data["aggregated_date"]))
+        stage('Push Docker Images to ECR') {
+            steps {
+                script {
+                    // Push Docker images to ECR
+                    sh """
+                        docker push ${ECR_REPO_URI}/patient_record_service:latest
+                        docker push ${ECR_REPO_URI}/doctor_service:latest
+                        docker push ${ECR_REPO_URI}/appointment_service:latest
+                        docker push ${ECR_REPO_URI}/notification_service:latest
+                    """
+                }
+            }
+        }
 
-        return jsonify({"message": "Aggregated data stored in Redshift"}), 200
-    except psycopg2.Error as db_error:
-        print(f"Database error during aggregation: {db_error}")
-        return jsonify({"error": "Database error occurred"}), 500
-    except Exception as e:
-        print(f"Unexpected error during aggregation: {e}")
-        return jsonify({"error": str(e)}), 500
-    finally:
-        if 'connection' in locals() and connection:
-            connection.close()
+        stage('Update Kubernetes Config') {
+            steps {
+                script {
+                    // Update the kubeconfig for EKS cluster
+                    sh """
+                        aws eks --region ${AWS_REGION} update-kubeconfig --name ${EKS_CLUSTER_NAME}
+                    """
+                }
+            }
+        }
 
-if __name__ == "__main__":
-    import logging
-    logging.basicConfig(level=logging.INFO)
-    app.run(host='0.0.0.0', port=5003)
+        stage('Deploy to Kubernetes') {
+            steps {
+                script {
+                    // Deploy the services to Kubernetes using kubectl
+                    sh """
+                        kubectl apply -f patient_record_service/deployment.yaml
+                        kubectl apply -f doctor_service/deployment.yaml
+                        kubectl apply -f appointment_service/deployment.yaml
+                        kubectl apply -f notification_service/deployment.yaml
+                    """
+                }
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                script {
+                    // Verify that the services are running
+                    sh 'kubectl get pods'
+                    sh 'kubectl get services'
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            // Clean up Docker images
+            sh 'docker system prune -f'
+        }
+    }
+}
