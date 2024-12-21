@@ -10,15 +10,15 @@ pipeline {
 
         // ECR Repositories for Microservices
         PATIENT_RECORD_SERVICE_REPO = '354918398452.dkr.ecr.us-east-1.amazonaws.com/healthsync/patient_record_service'
-        APPOINTMENT_SERVICE_REPO = '354918398452.dkr.ecr.us-east-1.amazonaws.com/healthsync/appointment_service'
-        DOCTOR_SERVICE_REPO = '354918398452.dkr.ecr.us-east-1.amazonaws.com/healthsync/doctor_service'
-        BILLING_SERVICE_REPO = '354918398452.dkr.ecr.us-east-1.amazonaws.com/healthsync/billing_service'
+        //APPOINTMENT_SERVICE_REPO = '354918398452.dkr.ecr.us-east-1.amazonaws.com/healthsync/appointment_service'
+        //DOCTOR_SERVICE_REPO = '354918398452.dkr.ecr.us-east-1.amazonaws.com/healthsync/doctor_service'
+        //BILLING_SERVICE_REPO = '354918398452.dkr.ecr.us-east-1.amazonaws.com/healthsync/billing_service'
 
         // YAML file paths
-        APPOINTMENT_SERVICE_YAML = './appointment_service/deployment.yaml'
+        //APPOINTMENT_SERVICE_YAML = './appointment_service/deployment.yaml'
         PATIENT_RECORD_SERVICE_YAML = './patient_record_service/deployment.yaml'
-        DOCTOR_SERVICE_YAML = './doctor_service/deployment.yaml'
-        BILLING_SERVICE_YAML = './billing_service/deployment.yaml'
+        //DOCTOR_SERVICE_YAML = './doctor_service/deployment.yaml'
+        //BILLING_SERVICE_YAML = './billing_service/deployment.yaml'
     }
 
     stages {
@@ -31,13 +31,13 @@ pipeline {
                     docker build -t ${PATIENT_RECORD_SERVICE_REPO}:${IMAGE_TAG} ./patient_record_service
 
                     # Build appointment_service
-                    docker build -t ${APPOINTMENT_SERVICE_REPO}:${IMAGE_TAG} ./appointment_service
+                    #docker build -t ${APPOINTMENT_SERVICE_REPO}:${IMAGE_TAG} ./appointment_service
 
                     # Build doctor_service
-                    docker build -t ${DOCTOR_SERVICE_REPO}:${IMAGE_TAG} ./doctor_service
+                    #docker build -t ${DOCTOR_SERVICE_REPO}:${IMAGE_TAG} ./doctor_service
 
                     # Build billing_service
-                    docker build -t ${BILLING_SERVICE_REPO}:${IMAGE_TAG} ./billing_service
+                    #docker build -t ${BILLING_SERVICE_REPO}:${IMAGE_TAG} ./billing_service
                     '''
                 }
             }
@@ -55,13 +55,13 @@ pipeline {
                     docker push ${PATIENT_RECORD_SERVICE_REPO}:${IMAGE_TAG}
 
                     # Push appointment_service
-                    docker push ${APPOINTMENT_SERVICE_REPO}:${IMAGE_TAG}
+                    #docker push ${APPOINTMENT_SERVICE_REPO}:${IMAGE_TAG}
 
                     # Push doctor_service
-                    docker push ${DOCTOR_SERVICE_REPO}:${IMAGE_TAG}
+                    #docker push ${DOCTOR_SERVICE_REPO}:${IMAGE_TAG}
 
                     # Push billing_service
-                    docker push ${BILLING_SERVICE_REPO}:${IMAGE_TAG}
+                    #docker push ${BILLING_SERVICE_REPO}:${IMAGE_TAG}
                     '''
                 }
             }
@@ -87,13 +87,13 @@ pipeline {
                     kubectl apply -f ${PATIENT_RECORD_SERVICE_YAML}
 
                     # Deploy appointment_service
-                    kubectl apply -f ${APPOINTMENT_SERVICE_YAML}
+                    #kubectl apply -f ${APPOINTMENT_SERVICE_YAML}
 
                     # Deploy doctor_service
-                    kubectl apply -f ${DOCTOR_SERVICE_YAML}
+                    #kubectl apply -f ${DOCTOR_SERVICE_YAML}
 
                     # Deploy billing_service
-                    kubectl apply -f ${BILLING_SERVICE_YAML}
+                    #kubectl apply -f ${BILLING_SERVICE_YAML}
                     '''
                 }
             }
