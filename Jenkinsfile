@@ -15,10 +15,10 @@ pipeline {
         BILLING_SERVICE_REPO = '354918398452.dkr.ecr.us-east-1.amazonaws.com/healthsync/billing_service'
 
         // YAML file paths
-        APPOINTMENT_SERVICE_YAML = '/home/ubuntu/appointment_service/deployment.yaml'
-        PATIENT_RECORD_SERVICE_YAML = '/home/ubuntu/patient_record_service/deployment.yaml'
-        DOCTOR_SERVICE_YAML = '/home/ubuntu/notification_service/deployment.yaml'
-        BILLING_SERVICE_YAML = '/home/ubuntu/billing_service/deployment.yaml
+        APPOINTMENT_SERVICE_YAML = './appointment_service/deployment.yaml'
+        PATIENT_RECORD_SERVICE_YAML = './patient_record_service/deployment.yaml'
+        DOCTOR_SERVICE_YAML = './doctor_service/deployment.yaml'
+        BILLING_SERVICE_YAML = './billing_service/deployment.yaml'
     }
 
     stages {
