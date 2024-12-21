@@ -2,91 +2,111 @@ pipeline {
     agent any
 
     environment {
-        // AWS Credentials (can be configured in Jenkins as credentials)
-        AWS_ACCESS_KEY_ID = 'AKIAVFIWI7H2KV4XOTUE' // AWS Access Key ID
-        AWS_SECRET_ACCESS_KEY = '2gSXo5eSpLIG2TyzEjuTwWVdEvUocVjceSrha53y' // AWS Secret Access Key
-        AWS_REGION = 'us-east-1' // Specify your AWS region
-        ECR_REPO_URI = '354918398452.dkr.ecr.us-east-1.amazonaws.com/healthsync' // Replace with your ECR URI
-        EKS_CLUSTER_NAME = 'MyCluster' // Your EKS cluster name
+        AWS_ACCESS_KEY_ID = 'AKIAVFIWI7H2KV4XOTUE'
+        AWS_SECRET_ACCESS_KEY = '2gSXo5eSpLIG2TyzEjuTwWVdEvUocVjceSrha53y'
+        AWS_DEFAULT_REGION = 'us-east-1'
+        CLUSTER_NAME = 'MyCluster'
+        IMAGE_TAG = 'latest'
+
+        // ECR Repositories for Microservices
+        PATIENT_RECORD_SERVICE_REPO = '354918398452.dkr.ecr.us-east-1.amazonaws.com/healthsync/patient_record_service'
+        APPOINTMENT_SERVICE_REPO = '354918398452.dkr.ecr.us-east-1.amazonaws.com/healthsync/appointment_service'
+        DOCTOR_SERVICE_REPO = '354918398452.dkr.ecr.us-east-1.amazonaws.com/healthsync/doctor_service'
+        BILLING_SERVICE_REPO = '354918398452.dkr.ecr.us-east-1.amazonaws.com/healthsync/billing_service'
+
+        // YAML file paths
+        APPOINTMENT_SERVICE_YAML = '/home/ubuntu/appointment_service.yaml'
+        PATIENT_RECORD_SERVICE_YAML = '/home/ubuntu/patient_record_service.yaml'
+        DOCTOR_SERVICE_YAML = '/home/ubuntu/doctor_service.yaml'
+        BILLING_SERVICE_YAML = '/home/ubuntu/billing_service.yaml'
     }
 
     stages {
-        stage('Clone Repository') {
-            steps {
-                checkout scm
-            }
-        }
-
         stage('Build Docker Images') {
             steps {
+                echo "Building Docker images for all microservices..."
                 script {
-                    // Build Docker images for all microservices
-                    sh """
-                        docker build -t ${ECR_REPO_URI}/patient_record_service:latest ./patient_record_service
-                        docker build -t ${ECR_REPO_URI}/doctor_service:latest ./doctor_service
-                        docker build -t ${ECR_REPO_URI}/appointment_service:latest ./appointment_service
-                        docker build -t ${ECR_REPO_URI}/notification_service:latest ./notification_service
-                    """
-                }
-            }
-        }
+                    sh '''
+                    # Build patient_record_service
+                    docker build -t ${PATIENT_RECORD_SERVICE_REPO}:${IMAGE_TAG} ./patient_record_service
 
-        stage('Login to ECR') {
-            steps {
-                script {
-                    // Login to AWS ECR
-                    sh """
-                        aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPO_URI}
-                    """
+                    # Build appointment_service
+                    docker build -t ${APPOINTMENT_SERVICE_REPO}:${IMAGE_TAG} ./appointment_service
+
+                    # Build doctor_service
+                    docker build -t ${DOCTOR_SERVICE_REPO}:${IMAGE_TAG} ./doctor_service
+
+                    # Build billing_service
+                    docker build -t ${BILLING_SERVICE_REPO}:${IMAGE_TAG} ./billing_service
+                    '''
                 }
             }
         }
 
         stage('Push Docker Images to ECR') {
             steps {
+                echo "Pushing Docker images to AWS ECR..."
                 script {
-                    // Push Docker images to ECR
-                    sh """
-                        docker push ${ECR_REPO_URI}/patient_record_service:latest
-                        docker push ${ECR_REPO_URI}/doctor_service:latest
-                        docker push ${ECR_REPO_URI}/appointment_service:latest
-                        docker push ${ECR_REPO_URI}/notification_service:latest
-                    """
+                    sh '''
+                    # Authenticate with ECR
+                    aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin ${PATIENT_RECORD_SERVICE_REPO}
+
+                    # Push patient_record_service
+                    docker push ${PATIENT_RECORD_SERVICE_REPO}:${IMAGE_TAG}
+
+                    # Push appointment_service
+                    docker push ${APPOINTMENT_SERVICE_REPO}:${IMAGE_TAG}
+
+                    # Push doctor_service
+                    docker push ${DOCTOR_SERVICE_REPO}:${IMAGE_TAG}
+
+                    # Push billing_service
+                    docker push ${BILLING_SERVICE_REPO}:${IMAGE_TAG}
+                    '''
                 }
             }
         }
 
-        stage('Update Kubernetes Config') {
+        stage('Update kubeconfig') {
             steps {
+                echo "Configuring kubectl for EKS cluster..."
                 script {
-                    // Update the kubeconfig for EKS cluster
-                    sh """
-                        aws eks --region ${AWS_REGION} update-kubeconfig --name ${EKS_CLUSTER_NAME}
-                    """
+                    sh '''
+                    aws eks --region ${AWS_DEFAULT_REGION} update-kubeconfig --name ${CLUSTER_NAME}
+                    '''
                 }
             }
         }
 
-        stage('Deploy to Kubernetes') {
+        stage('Deploy Microservices') {
             steps {
+                echo "Deploying microservices to EKS cluster..."
                 script {
-                    // Deploy the services to Kubernetes using kubectl
-                    sh """
-                        kubectl apply -f patient_record_service/deployment.yaml
-                        kubectl apply -f doctor_service/deployment.yaml
-                        kubectl apply -f appointment_service/deployment.yaml
-                        kubectl apply -f notification_service/deployment.yaml
-                    """
+                    sh '''
+                    # Deploy patient_record_service
+                    kubectl apply -f ${PATIENT_RECORD_SERVICE_YAML}
+
+                    # Deploy appointment_service
+                    kubectl apply -f ${APPOINTMENT_SERVICE_YAML}
+
+                    # Deploy doctor_service
+                    kubectl apply -f ${DOCTOR_SERVICE_YAML}
+
+                    # Deploy billing_service
+                    kubectl apply -f ${BILLING_SERVICE_YAML}
+                    '''
                 }
             }
         }
 
         stage('Verify Deployment') {
             steps {
+                echo "Verifying application deployment..."
                 script {
-                    // Verify that the services are running
-                    sh 'kubectl get pods'
-                    sh 'kubectl get services'
+                    sh '''
+                    kubectl get pods
+                    kubectl get services
+                    '''
                 }
             }
         }
@@ -94,8 +114,13 @@ pipeline {
 
     post {
         always {
-            // Clean up Docker images
-            sh 'docker system prune -f'
+            echo "Pipeline execution completed."
+        }
+        success {
+            echo "All microservices deployed successfully!"
+        }
+        failure {
+            echo "Deployment failed. Please check the logs."
         }
     }
 }
