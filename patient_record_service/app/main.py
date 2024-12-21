@@ -7,7 +7,7 @@ app = Flask(__name__)
 # Configuration for Redshift
 REDHSHIFT_DB_URI = os.getenv(
     "REDSHIFT_DB_URI",
-    "postgresql://awsuser:Admin$100@your-cluster-name.cluster-xyz123abc.us-east-1.redshift.amazonaws.com:5439/database_name"
+    "postgresql://awsuser:Admin$100@MyCluster.cluster-xyz123abc.us-east-1.redshift.amazonaws.com:5439/dev"
 )
 app.config['SQLALCHEMY_DATABASE_URI'] = REDHSHIFT_DB_URI
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
