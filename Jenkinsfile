@@ -84,7 +84,7 @@ pipeline {
                 script {
                     sh '''
                     # Deploy patient_record_service
-                    kubectl apply -f ${PATIENT_RECORD_SERVICE_YAML}
+                    kubectl apply -f /home/ubuntu/patient_record_service/deployment.yaml
 
                     # Deploy appointment_service
                     #kubectl apply -f ${APPOINTMENT_SERVICE_YAML}
